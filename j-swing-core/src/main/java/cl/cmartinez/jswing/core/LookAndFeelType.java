@@ -1,7 +1,10 @@
 package cl.cmartinez.jswing.core;
 
+import lombok.Getter;
+
 import javax.swing.*;
 
+@Getter
 public enum LookAndFeelType {
   SYSTEM(UIManager.getSystemLookAndFeelClassName()),
   CROSS_PLATFORM(UIManager.getCrossPlatformLookAndFeelClassName()),
@@ -16,7 +19,4 @@ public enum LookAndFeelType {
     this.className = className;
   }
 
-  public String getClassName() {
-    return className;
-  }
 }

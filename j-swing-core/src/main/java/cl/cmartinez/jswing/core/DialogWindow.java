@@ -1,5 +1,7 @@
 package cl.cmartinez.jswing.core;
 
+import lombok.Getter;
+
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
@@ -12,6 +14,7 @@ public class DialogWindow {
   private static final int DEFAULT_HEIGHT = 300;
   private static final double DEFAULT_RATIO = 0.8;
 
+  @Getter
   private final JDialog dialog;
   private final Frame owner;
   private DialogSize size = new DialogSize(DEFAULT_WIDTH, DEFAULT_HEIGHT);
@@ -69,11 +72,7 @@ public class DialogWindow {
     }
   }
 
-  public JDialog getDialog() {
-    return dialog;
-  }
-
-  record DialogSize(int width, int height) {
+    record DialogSize(int width, int height) {
     DialogSize {
       if (width <= 0 || height <= 0) {
         throw new IllegalArgumentException("Width and height must be positive");

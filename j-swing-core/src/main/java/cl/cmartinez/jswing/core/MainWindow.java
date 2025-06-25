@@ -1,5 +1,6 @@
 package cl.cmartinez.jswing.core;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.imageio.ImageIO;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class MainWindow {
   public static final int[] ICON_SIZES = new int[] {16, 32, 48, 64};
-  private final JFrame frame;
+  @Getter private final JFrame frame;
   private EventLogDialog eventLogDialog;
 
   private MainWindow(Builder builder) {
@@ -129,53 +130,57 @@ public class MainWindow {
   }
 
   private void attachComponentLogging(Component comp) {
-    if (comp instanceof JButton) {
-      ((JButton) comp)
-          .addActionListener(
-              e -> eventLogDialog.logEvent("Button '" + ((JButton) comp).getText() + "' clicked"));
-    } else if (comp instanceof JTextField tf) {
-      tf.getDocument()
-          .addDocumentListener(
-              new DocumentListener() {
-                public void insertUpdate(DocumentEvent e) {
-                  logFieldChange(tf);
-                }
+    ComponentLogger logger =
+        switch (comp) {
+          case JButton button ->
+              () ->
+                  button.addActionListener(
+                      e -> eventLogDialog.logEvent("Button '" + button.getText() + "' clicked"));
+          case JTextField textField ->
+              () ->
+                  textField
+                      .getDocument()
+                      .addDocumentListener(
+                          new DocumentListener() {
+                            @Override
+                            public void insertUpdate(DocumentEvent e) {
+                              eventLogDialog.logEvent("TextField updated: " + textField.getText());
+                            }
 
-                public void removeUpdate(DocumentEvent e) {
-                  logFieldChange(tf);
-                }
+                            @Override
+                            public void removeUpdate(DocumentEvent e) {
+                              eventLogDialog.logEvent("TextField updated: " + textField.getText());
+                            }
 
-                public void changedUpdate(DocumentEvent e) {
-                  logFieldChange(tf);
-                }
+                            @Override
+                            public void changedUpdate(DocumentEvent e) {
+                              // Not used for plain text fields
+                            }
+                          });
+          case JCheckBox checkBox ->
+              () ->
+                  checkBox.addItemListener(
+                      e ->
+                          eventLogDialog.logEvent(
+                              "Checkbox '"
+                                  + checkBox.getText()
+                                  + "' "
+                                  + (checkBox.isSelected() ? "checked" : "unchecked")));
+          case JComboBox<?> comboBox ->
+              () ->
+                  comboBox.addActionListener(
+                      e ->
+                          eventLogDialog.logEvent(
+                              "ComboBox selection changed to: " + comboBox.getSelectedItem()));
+          default -> null;
+        };
 
-                private void logFieldChange(JTextField f) {
-                  eventLogDialog.logEvent(
-                      "TextField '" + f.getName() + "' changed: " + f.getText());
-                }
-              });
-    } else if (comp instanceof JCheckBox) {
-      ((JCheckBox) comp)
-          .addItemListener(
-              e ->
-                  eventLogDialog.logEvent(
-                      "CheckBox '"
-                          + ((JCheckBox) comp).getText()
-                          + "': "
-                          + (e.getStateChange() == ItemEvent.SELECTED
-                              ? "selected"
-                              : "deselected")));
-    } else if (comp instanceof JComboBox) {
-      ((JComboBox<?>) comp)
-          .addActionListener(
-              e ->
-                  eventLogDialog.logEvent(
-                      "ComboBox changed: " + ((JComboBox<?>) comp).getSelectedItem()));
+    if (logger != null) {
+      logger.attachLogging();
     }
-    if (comp instanceof Container) {
-      for (Component child : ((Container) comp).getComponents()) {
-        attachComponentLogging(child);
-      }
+
+    if (comp instanceof Container container) {
+      Arrays.stream(container.getComponents()).forEach(this::attachComponentLogging);
     }
   }
 
@@ -262,8 +267,9 @@ public class MainWindow {
     SwingUtilities.invokeLater(() -> frame.setVisible(true));
   }
 
-  public JFrame getFrame() {
-    return frame;
+  @FunctionalInterface
+  private interface ComponentLogger {
+    void attachLogging();
   }
 
   public static class Builder {
